@@ -1,0 +1,14 @@
+[project]
+name = "governed-service-runner"
+version = "0.1.0"
+description = "A governed service request runner prototype"
+requires-python = ">=3.12,<3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+]
