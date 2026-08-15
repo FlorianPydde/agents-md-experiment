@@ -1,0 +1,7 @@
+*.db
+report.csv
+report.json
+report.tsv
+__pycache__/
+*.pyc
+.pytest_cache/
