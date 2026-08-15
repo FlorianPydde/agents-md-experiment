@@ -1,0 +1,16 @@
+[project]
+name = "app"
+version = "0.1.0"
+description = "Governed service request runner"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.141.1",
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "uvicorn>=0.52.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
