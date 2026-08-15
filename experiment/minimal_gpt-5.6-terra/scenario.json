@@ -1,0 +1,47 @@
+{
+  "steps": [
+    {
+      "action": "intake",
+      "request": {
+        "reference": "REQ-1001",
+        "kind": "goodwill_credit",
+        "account": "ACC-100",
+        "amount": "50.00",
+        "requester": { "name": "Nia Patel", "role": "agent", "origin": "internal" }
+      }
+    },
+    {
+      "action": "intake",
+      "request": {
+        "reference": "REQ-1002",
+        "kind": "goodwill_credit",
+        "account": "ACC-100",
+        "amount": "250.00",
+        "requester": { "name": "Nia Patel", "role": "agent", "origin": "internal" }
+      }
+    },
+    { "action": "decide", "reference": "REQ-1002", "role": "finance", "decision": "approve" },
+    {
+      "action": "intake",
+      "request": {
+        "reference": "REQ-1003",
+        "kind": "account_recovery",
+        "account": "ACC-200",
+        "amount": "75.00",
+        "requester": { "name": "Omar Haddad", "role": "agent", "origin": "external" }
+      }
+    },
+    { "action": "decide", "reference": "REQ-1003", "role": "risk", "decision": "reject" },
+    {
+      "action": "intake",
+      "request": {
+        "reference": "REQ-1004",
+        "kind": "collect_debt",
+        "account": "ACC-200",
+        "amount": "500.00",
+        "requester": { "name": "Omar Haddad", "role": "agent", "origin": "external" }
+      }
+    },
+    { "action": "decide", "reference": "REQ-1004", "role": "finance", "decision": "approve" }
+  ]
+}
