@@ -207,7 +207,7 @@ class Store:
 
     def get_pending_approval(self, reference: Reference) -> ApprovalRecord | None:
         row = self._conn.execute(
-            "SELECT * FROM approvals WHERE reference = ? AND resolved = 0 ORDER BY id DESC LIMIT 1",
+            "SELECT * FROM approvals WHERE reference = ? AND resolved = 0 ORDER BY id ASC LIMIT 1",
             (reference,),
         ).fetchone()
         if row is None:

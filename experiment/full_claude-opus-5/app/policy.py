@@ -38,44 +38,50 @@ class PolicyContext:
 
 @dataclass(frozen=True)
 class PolicyRule:
+    description: str
     matches: Callable[[PolicyContext], bool]
     decide: Callable[[PolicyContext], PolicyDecision]
 
 
 _RULES: tuple[PolicyRule, ...] = (
-    # 1. A read operation runs on its own.
     PolicyRule(
+        description="A read operation runs on its own.",
         matches=lambda ctx: ctx.materiality is Materiality.READ,
         decide=lambda ctx: Autonomous(),
     ),
-    # 2. apply_credit of 100.00 or less runs on its own.
     PolicyRule(
+        description="apply_credit of 100.00 or less runs on its own.",
         matches=lambda ctx: ctx.operation is OperationName.APPLY_CREDIT
         and ctx.amount.is_at_most(GOODWILL_CREDIT_AUTONOMOUS_LIMIT),
         decide=lambda ctx: Autonomous(),
     ),
-    # 3. apply_credit above 100.00 needs finance.
     PolicyRule(
+        description="apply_credit above 100.00 needs finance.",
         matches=lambda ctx: ctx.operation is OperationName.APPLY_CREDIT,
         decide=lambda ctx: NeedsApproval(ApproverRole.FINANCE),
     ),
-    # 4. apply_debit needs finance.
     PolicyRule(
+        description="apply_debit needs finance.",
         matches=lambda ctx: ctx.operation is OperationName.APPLY_DEBIT,
         decide=lambda ctx: NeedsApproval(ApproverRole.FINANCE),
     ),
-    # 5. freeze_account and unfreeze_account need risk.
     PolicyRule(
+        description="freeze_account and unfreeze_account need risk.",
         matches=lambda ctx: ctx.operation
         in (OperationName.FREEZE_ACCOUNT, OperationName.UNFREEZE_ACCOUNT),
         decide=lambda ctx: NeedsApproval(ApproverRole.RISK),
     ),
-    # 6. Anything else runs on its own.
     PolicyRule(
+        description="Anything else runs on its own.",
         matches=lambda ctx: True,
         decide=lambda ctx: Autonomous(),
     ),
 )
+
+
+def rules() -> tuple[PolicyRule, ...]:
+    """The ordered policy rules themselves, for display (the API's /policy)."""
+    return _RULES
 
 
 def decide(ctx: PolicyContext) -> PolicyDecision:

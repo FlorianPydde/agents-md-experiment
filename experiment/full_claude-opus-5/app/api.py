@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from app.domain import ApprovalRecord, ApproverRole, Decision, Money, OperationName, RequestRecord
+from app.domain import ApprovalRecord, ApproverRole, Decision, RequestRecord
 from app.engine import EngineError, apply_decision
 from app.operations import OPERATIONS
-from app.policy import Autonomous, NeedsApproval, PolicyContext, decide as decide_policy
+from app.policy import rules as policy_rules
 from app.store import Store
 
 
@@ -49,10 +48,8 @@ class DecisionIn(BaseModel):
 
 
 class PolicyRuleOut(BaseModel):
-    operation: str
-    materiality: str
-    outcome: str
-    role: str | None
+    order: int
+    description: str
 
 
 def _request_out(record: RequestRecord) -> RequestOut:
@@ -82,16 +79,8 @@ def _approval_out(approval: ApprovalRecord) -> ApprovalOut:
     )
 
 
-def _policy_rule_out(operation: OperationName) -> PolicyRuleOut:
-    entry = OPERATIONS[operation]
-    ctx = PolicyContext(operation=operation, materiality=entry.materiality, amount=Money(Decimal("0.00")))
-    outcome = decide_policy(ctx)
-    return PolicyRuleOut(
-        operation=operation.value,
-        materiality=entry.materiality.value,
-        outcome="autonomous" if isinstance(outcome, Autonomous) else "needs_approval",
-        role=outcome.role.value if isinstance(outcome, NeedsApproval) else None,
-    )
+def _policy_rule_out(order: int, description: str) -> PolicyRuleOut:
+    return PolicyRuleOut(order=order, description=description)
 
 
 def create_app(db_path: Path) -> FastAPI:
@@ -153,6 +142,6 @@ def create_app(db_path: Path) -> FastAPI:
 
     @app.get("/policy")
     def list_policy() -> list[PolicyRuleOut]:
-        return [_policy_rule_out(name) for name in OperationName]
+        return [_policy_rule_out(i, rule.description) for i, rule in enumerate(policy_rules(), start=1)]
 
     return app
