@@ -1,0 +1,19 @@
+[project]
+name = "governed-runner"
+version = "0.1.0"
+description = "Governed service request runner prototype"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.141.1",
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "uvicorn[standard]>=0.52.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

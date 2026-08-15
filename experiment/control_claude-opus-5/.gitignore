@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+runner.db
+runner.db-wal
+runner.db-shm
+report.csv
+report.json
+report.tsv
+.pytest_cache/
