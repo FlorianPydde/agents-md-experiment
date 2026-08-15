@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+governed.db
+report.csv
+report.json
+report.tsv
+.pytest_cache/
