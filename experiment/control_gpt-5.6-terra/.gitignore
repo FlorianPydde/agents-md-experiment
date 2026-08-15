@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+service_log.sqlite3
+report.csv
+report.json
+report.tsv
