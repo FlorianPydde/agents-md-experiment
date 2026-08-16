@@ -7,6 +7,8 @@ the supported operations and policy rules.
 
 from __future__ import annotations
 
+import threading
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
@@ -52,9 +54,8 @@ def _approval_to_dict(row) -> dict:
 
 def create_app(db_path: str = DEFAULT_DB_PATH) -> FastAPI:
     api = FastAPI(title="Governed Service Request Runner")
-
-    def engine() -> Engine:
-        return Engine.open_existing(db_path)
+    eng = Engine.open_existing(db_path)
+    lock = threading.Lock()
 
     @api.get("/health")
     def health():
@@ -62,26 +63,29 @@ def create_app(db_path: str = DEFAULT_DB_PATH) -> FastAPI:
 
     @api.get("/requests")
     def list_requests():
-        return [_request_to_dict(row) for row in engine().list_requests()]
+        with lock:
+            return [_request_to_dict(row) for row in eng.list_requests()]
 
     @api.get("/requests/{reference}")
     def get_request(reference: str):
-        row = engine().get_request(reference)
+        with lock:
+            row = eng.get_request(reference)
         if row is None:
             raise HTTPException(status_code=404, detail=f"no such request '{reference}'")
         return _request_to_dict(row)
 
     @api.get("/requests/{reference}/log")
     def get_request_log(reference: str):
-        eng = engine()
-        row = eng.get_request(reference)
-        if row is None:
-            raise HTTPException(status_code=404, detail=f"no such request '{reference}'")
-        return eng.get_log(reference)
+        with lock:
+            row = eng.get_request(reference)
+            if row is None:
+                raise HTTPException(status_code=404, detail=f"no such request '{reference}'")
+            return eng.get_log(reference)
 
     @api.get("/approvals")
     def list_pending_approvals():
-        return [_approval_to_dict(row) for row in engine().list_pending_approvals()]
+        with lock:
+            return [_approval_to_dict(row) for row in eng.list_pending_approvals()]
 
     @api.post("/requests/{reference}/decide")
     def decide(reference: str, payload: DecisionPayload):
@@ -89,12 +93,14 @@ def create_app(db_path: str = DEFAULT_DB_PATH) -> FastAPI:
             raise HTTPException(
                 status_code=400, detail=f"unknown decision '{payload.decision}'"
             )
-        eng = engine()
-        try:
-            eng.decide(DecideAction(reference=reference, role=payload.role, decision=payload.decision))
-        except AppError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return _request_to_dict(eng.get_request(reference))
+        with lock:
+            try:
+                eng.decide(
+                    DecideAction(reference=reference, role=payload.role, decision=payload.decision)
+                )
+            except AppError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return _request_to_dict(eng.get_request(reference))
 
     @api.get("/operations")
     def list_operations():

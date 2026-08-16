@@ -85,7 +85,8 @@ def decide_policy(operation: str, amount: Decimal | None) -> PolicyDecision:
     if MATERIALITY[operation] == "read":
         return PolicyDecision(True, None)
     if operation == "apply_credit":
-        assert amount is not None
+        if amount is None:
+            raise ValueError("apply_credit requires an amount")
         if amount <= GOODWILL_CREDIT_AUTO_LIMIT:
             return PolicyDecision(True, None)
         return PolicyDecision(False, "finance")
