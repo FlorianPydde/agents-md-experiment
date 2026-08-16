@@ -41,6 +41,10 @@ class RunnerError(Exception):
     pass
 
 
+class NotFoundError(RunnerError):
+    pass
+
+
 def amount(value):
     if isinstance(value, bool):
         raise RunnerError("amount must be a decimal string")
@@ -67,9 +71,9 @@ class Service:
         self.db.executescript("""
             CREATE TABLE accounts (id TEXT PRIMARY KEY, owner TEXT NOT NULL, tier TEXT NOT NULL,
               balance TEXT NOT NULL, frozen INTEGER NOT NULL);
-            CREATE TABLE requests (reference TEXT PRIMARY KEY, kind TEXT NOT NULL, account TEXT NOT NULL,
+            CREATE TABLE requests (arrival INTEGER PRIMARY KEY AUTOINCREMENT, reference TEXT UNIQUE NOT NULL, kind TEXT NOT NULL, account TEXT NOT NULL,
               amount TEXT NOT NULL, requester_name TEXT NOT NULL, requester_role TEXT NOT NULL,
-              requester_origin TEXT NOT NULL, state TEXT NOT NULL, arrival INTEGER NOT NULL);
+              requester_origin TEXT NOT NULL, state TEXT NOT NULL);
             CREATE TABLE steps (id INTEGER PRIMARY KEY, reference TEXT NOT NULL, position INTEGER NOT NULL,
               operation TEXT NOT NULL, state TEXT NOT NULL, UNIQUE(reference, position));
             CREATE TABLE approvals (id INTEGER PRIMARY KEY, reference TEXT NOT NULL, step_id INTEGER NOT NULL,
@@ -116,10 +120,10 @@ class Service:
             raise RunnerError("requester origin is invalid")
         reference = request["reference"]
         try:
-            self.db.execute("INSERT INTO requests VALUES (?,?,?,?,?,?,?,?,?)", (
+            self.db.execute("INSERT INTO requests(reference,kind,account,amount,requester_name,requester_role,"
+                            "requester_origin,state) VALUES (?,?,?,?,?,?,?,?)", (
                 reference, request["kind"], request["account"], str(amount(request["amount"])),
-                requester["name"], requester["role"], requester["origin"], "received",
-                self.db.execute("SELECT COUNT(*) FROM requests").fetchone()[0]))
+                requester["name"], requester["role"], requester["origin"], "received"))
         except sqlite3.IntegrityError:
             raise RunnerError(f"request {reference} already exists") from None
         self.log(reference, "request_received", kind=request["kind"], account=request["account"])
@@ -224,7 +228,6 @@ class Service:
             return
         self.db.execute("UPDATE steps SET state='pending' WHERE id=?", (approval["step_id"],))
         self.db.execute("UPDATE requests SET state='received' WHERE reference=?", (reference,))
-        self.db.commit()
         step = self.db.execute("SELECT * FROM steps WHERE id=?", (approval["step_id"],)).fetchone()
         if self.execute_step(self.request_row(reference), step):
             self.advance(reference)
@@ -232,7 +235,7 @@ class Service:
     def request_row(self, reference):
         row = self.db.execute("SELECT * FROM requests WHERE reference=?", (reference,)).fetchone()
         if row is None:
-            raise RunnerError(f"request {reference} does not exist")
+            raise NotFoundError(f"request {reference} does not exist")
         return row
 
     def detail(self, reference):
@@ -303,7 +306,9 @@ def show(references, database):
     try:
         cache = {}
         for reference in references:
-            detail = cache.setdefault(reference, service.detail(reference))
+            if reference not in cache:
+                cache[reference] = service.detail(reference)
+            detail = cache[reference]
             print(json.dumps(detail, indent=2, sort_keys=True))
     finally:
         service.close()
@@ -345,35 +350,40 @@ def serve(database, port):
                     return self.respond(200, {"status": "ok"})
                 if path == "/requests":
                     return self.respond(200, service.requests())
-                if path.startswith("/requests/") and path.endswith("/log"):
-                    return self.respond(200, service.detail(unquote(path.split("/")[2]))["log"])
-                if path.startswith("/requests/"):
-                    return self.respond(200, service.detail(unquote(path.split("/")[2])))
+                parts = path.split("/")
+                if len(parts) == 4 and parts[1] == "requests" and parts[3] == "log" and parts[2]:
+                    return self.respond(200, service.detail(unquote(parts[2]))["log"])
+                if len(parts) == 3 and parts[1] == "requests" and parts[2]:
+                    return self.respond(200, service.detail(unquote(parts[2])))
                 if path == "/approvals/pending":
                     return self.respond(200, service.pending_approvals())
                 if path == "/operations":
                     return self.respond(200, {"operations": OPERATIONS, "policy_rules": POLICY_RULES})
                 self.respond(404, {"error": "not found"})
             except RunnerError as error:
-                self.respond(404, {"error": str(error)})
+                self.respond(404 if isinstance(error, NotFoundError) else 400, {"error": str(error)})
             finally:
                 service.close()
 
         def do_POST(self):
-            if not self.path.startswith("/approvals/"):
+            path = urlparse(self.path).path
+            parts = path.split("/")
+            if len(parts) != 3 or parts[1] != "approvals" or not parts[2]:
                 return self.respond(404, {"error": "not found"})
             try:
                 size = int(self.headers.get("Content-Length", "0"))
+                if size < 1 or size > 1_048_576:
+                    raise RunnerError("request body must be between 1 and 1048576 bytes")
                 data = json.loads(self.rfile.read(size))
-                reference = unquote(urlparse(self.path).path.split("/")[2])
+                reference = unquote(parts[2])
                 service = Service(database)
                 try:
                     service.decide(reference, data["role"], data["decision"])
                     self.respond(200, service.detail(reference))
                 finally:
                     service.close()
-            except (KeyError, json.JSONDecodeError, RunnerError) as error:
-                self.respond(400, {"error": str(error)})
+            except (KeyError, TypeError, json.JSONDecodeError, RunnerError) as error:
+                self.respond(404 if isinstance(error, NotFoundError) else 400, {"error": str(error)})
 
         def log_message(self, format, *args):
             pass

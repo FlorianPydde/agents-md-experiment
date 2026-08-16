@@ -37,6 +37,14 @@ class RunnerTests(unittest.TestCase):
         self.service.decide("R", "finance", "approve")
         self.assertEqual("failed", self.service.request_row("R")["state"])
 
+    def test_rejected_recovery_leaves_account_frozen(self):
+        self.service.db.execute("UPDATE accounts SET frozen=1 WHERE id='A'")
+        self.service.db.commit()
+        self.service.intake(self.request("account_recovery", "10.00"))
+        self.service.decide("R", "risk", "reject")
+        self.assertEqual("rejected", self.service.request_row("R")["state"])
+        self.assertTrue(self.service.db.execute("SELECT frozen FROM accounts WHERE id='A'").fetchone()[0])
+
 
 if __name__ == "__main__":
     unittest.main()
