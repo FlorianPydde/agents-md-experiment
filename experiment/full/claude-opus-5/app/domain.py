@@ -128,7 +128,6 @@ class StepRecord:
 class DecisionCommand:
     """A role resolving a pending approval."""
 
-
     reference: str
     role: Role
     decision: Decision
