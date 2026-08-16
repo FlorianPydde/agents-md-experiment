@@ -1,0 +1,6 @@
+{
+  "accounts": [
+    { "id": "ACC-100", "owner": "Ada Lovelace", "tier": "standard", "balance": "1200.00", "frozen": false },
+    { "id": "ACC-200", "owner": "Grace Hopper", "tier": "premium", "balance": "50.00", "frozen": true }
+  ]
+}
