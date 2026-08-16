@@ -29,6 +29,7 @@ POLICY = [
     "freeze_account and unfreeze_account require risk",
     "all other operations run automatically",
 ]
+_server_service: Service | None = None
 
 
 class UserError(Exception):
@@ -131,7 +132,7 @@ class Service:
 
     def intake(self, request: dict):
         reference, kind, account, total, requester = self._request_data(request)
-        arrival = self.db.execute("SELECT count(*) FROM requests").fetchone()[0]
+        arrival = self.db.execute("SELECT COALESCE(MAX(arrival), -1) + 1 FROM requests").fetchone()[0]
         try:
             self.db.execute("INSERT INTO requests VALUES (?, ?, ?, ?, ?, 'received', ?)",
                             (reference, kind, account, str(total), json.dumps(requester), arrival))
@@ -313,7 +314,10 @@ def export(args):
 
 
 def application(environ, start_response):
-    service = Service()
+    service = _server_service
+    owned_service = service is None
+    if service is None:
+        service = Service()
     try:
         method, path = environ["REQUEST_METHOD"], unquote(environ["PATH_INFO"])
         if method == "GET" and path == "/health":
@@ -342,6 +346,8 @@ def application(environ, start_response):
                 content_length = int(environ.get("CONTENT_LENGTH") or "0")
             except ValueError:
                 raise UserError("invalid Content-Length") from None
+            if content_length == 0:
+                raise UserError("approval body is required")
             if content_length > 65_536:
                 raise UserError("approval body is too large")
             body = json.loads(environ["wsgi.input"].read(content_length))
@@ -359,14 +365,21 @@ def application(environ, start_response):
     except (UserError, json.JSONDecodeError) as exc:
         result, status = {"error": str(exc)}, "400 Bad Request"
     finally:
-        service.close()
+        if owned_service:
+            service.close()
     start_response(status, [("Content-Type", "application/json")])
     return [json.dumps(result).encode()]
 
 
 def serve(_args):
+    global _server_service
     print("Serving on http://127.0.0.1:8000")
-    make_server("127.0.0.1", 8000, application).serve_forever()
+    _server_service = Service()
+    try:
+        make_server("127.0.0.1", 8000, application).serve_forever()
+    finally:
+        _server_service.close()
+        _server_service = None
 
 
 def main():

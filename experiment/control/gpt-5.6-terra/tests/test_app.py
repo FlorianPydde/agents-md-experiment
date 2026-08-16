@@ -1,8 +1,10 @@
 import tempfile
 import unittest
 from decimal import Decimal
+from io import BytesIO
 from pathlib import Path
 
+import app.__main__ as app
 from app.__main__ import Service
 
 
@@ -55,6 +57,18 @@ class ServiceTests(unittest.TestCase):
         self.service.decide("debit", "finance", "approve")
         self.assertEqual(self.service.request("debit")["state"], "failed")
         self.assertEqual(self.service.request("debit")["steps"][1]["state"], "failed")
+
+    def test_api_rejects_missing_approval_body(self):
+        app._server_service = self.service
+        response = {}
+        body = b"".join(app.application(
+            {"REQUEST_METHOD": "POST", "PATH_INFO": "/approvals/request",
+             "CONTENT_LENGTH": "0", "wsgi.input": BytesIO()},
+            lambda status, _headers: response.update(status=status),
+        ))
+        app._server_service = None
+        self.assertEqual(response["status"], "400 Bad Request")
+        self.assertIn(b"approval body is required", body)
 
 
 if __name__ == "__main__":
