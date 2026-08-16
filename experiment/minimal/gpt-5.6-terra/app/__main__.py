@@ -273,9 +273,9 @@ def run(args: argparse.Namespace) -> int:
             else:
                 raise Error(f"invalid action: {action}")
         for row in service.db.execute("SELECT reference,kind,state FROM requests ORDER BY rowid"):
-            print(f"{row['reference']:<10}  {row['kind']:<20} {row['state']}")
+            print(f"{row['reference']:<10}{row['kind']:<20}{row['state']}")
         for row in service.db.execute("SELECT id,balance,frozen FROM accounts ORDER BY id"):
-            print(f"{row['id']:<10} {Decimal(row['balance']):>10.2f}  {'frozen' if row['frozen'] else 'active'}")
+            print(f"{row['id']:<10}{Decimal(row['balance']):>10.2f}  {'frozen' if row['frozen'] else 'active'}")
     finally:
         service.close()
     return 0
