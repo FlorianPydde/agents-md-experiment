@@ -10,6 +10,9 @@ from .errors import AppError
 from .service import OPERATIONS, POLICY_RULES, Service
 
 
+MAX_BODY_SIZE = 64 * 1024
+
+
 class ApiHandler(BaseHTTPRequestHandler):
     service: Service
 
@@ -76,6 +79,12 @@ class ApiHandler(BaseHTTPRequestHandler):
             return
         try:
             length = int(self.headers.get("Content-Length", "0"))
+            if length < 0 or length > MAX_BODY_SIZE:
+                self._send(
+                    HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                    {"error": f"request body must not exceed {MAX_BODY_SIZE} bytes"},
+                )
+                return
             body = json.loads(self.rfile.read(length))
             if not isinstance(body, dict):
                 raise AppError("request body must be an object")
