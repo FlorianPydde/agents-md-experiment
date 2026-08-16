@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import sqlite3
 import sys
+from decimal import Decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
