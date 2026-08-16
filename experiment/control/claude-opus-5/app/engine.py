@@ -31,8 +31,7 @@ class Engine:
                 f"request '{request.reference}' names unknown account '{request.account}'"
             )
 
-        arrival = len(self.store.requests())
-        self.store.put_request(request, arrival, State.RECEIVED)
+        self.store.put_request(request, self.store.next_arrival(), State.RECEIVED)
         self.store.append_event(
             "request_received",
             request.reference,

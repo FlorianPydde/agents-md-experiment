@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import json
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -105,10 +105,14 @@ class Loading(unittest.TestCase):
         self.assertIn("action", str(caught.exception))
 
     def test_the_command_line_reports_errors_without_a_traceback(self) -> None:
-        captured = io.StringIO()
-        with redirect_stdout(captured):
-            code = cli.main(["run", str(self.folder / "absent.json"), "--world", str(self.folder / "absent.json")])
+        errors = io.StringIO()
+        with redirect_stderr(errors):
+            code = cli.main(
+                ["run", str(self.folder / "absent.json"), "--world", str(self.folder / "absent.json")]
+            )
         self.assertEqual(code, 1)
+        self.assertIn("file not found", errors.getvalue())
+        self.assertNotIn("Traceback", errors.getvalue())
 
 
 class ShowAndExport(EngineCase):

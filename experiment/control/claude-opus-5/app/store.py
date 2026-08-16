@@ -152,6 +152,11 @@ class Store:
         ]
 
     # -- requests ------------------------------------------------------
+    def next_arrival(self) -> int:
+        """The next arrival number, one past the highest already stored."""
+        row = self.connection.execute("SELECT MAX(arrival) AS highest FROM requests").fetchone()
+        return 0 if row["highest"] is None else row["highest"] + 1
+
     def put_request(self, request: Request, arrival: int, state: State) -> None:
         self.connection.execute(
             "INSERT INTO requests (reference, arrival, kind, account, amount,"

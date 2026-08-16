@@ -67,6 +67,10 @@ class Lookup:
     def fetch(self, reference: str) -> dict[str, object]:
         return self._fetch(reference)
 
+    def forget(self) -> None:
+        """Drop the cache, after something changed underneath it."""
+        self._fetch.cache_clear()
+
     @property
     def hits(self) -> int:
         """How many lookups were served from the cache."""

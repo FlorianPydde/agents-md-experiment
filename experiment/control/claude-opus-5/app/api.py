@@ -97,7 +97,7 @@ class Api:
         except ValueError:
             return 400, {"error": "field 'decision' must be one of: approve, reject"}
         state = Engine(self.store).decide(reference, role, decision)
-        self.lookup = Lookup(self.store)
+        self.lookup.forget()
         return 200, {"reference": reference, "state": str(state)}
 
     def operations(self) -> tuple[int, Any]:
