@@ -271,7 +271,9 @@ def run(args):
             if not isinstance(item, dict) or item.get("action") not in ("intake", "decide"):
                 raise UserError("scenario action is invalid")
             if item["action"] == "intake":
-                service.intake(item.get("request"))
+                if "request" not in item:
+                    raise UserError("intake action is missing request")
+                service.intake(item["request"])
             else:
                 if any(key not in item for key in ("reference", "role", "decision")):
                     raise UserError("decision is missing a required field")
