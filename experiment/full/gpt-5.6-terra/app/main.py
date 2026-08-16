@@ -373,7 +373,10 @@ def serve(database, port):
             if len(parts) != 3 or parts[1] != "approvals" or not parts[2]:
                 return self.respond(404, {"error": "not found"})
             try:
-                size = int(self.headers.get("Content-Length", "0"))
+                content_length = self.headers.get("Content-Length")
+                if content_length is None:
+                    raise RunnerError("request body requires Content-Length")
+                size = int(content_length)
                 if size < 1 or size > 1_048_576:
                     raise RunnerError("request body must be between 1 and 1048576 bytes")
                 data = json.loads(self.rfile.read(size))
@@ -392,7 +395,7 @@ def serve(database, port):
             except (KeyError, TypeError, json.JSONDecodeError, RunnerError) as error:
                 self.respond(404 if isinstance(error, NotFoundError) else 400, {"error": str(error)})
 
-        def log_message(self, format, *args):
+        def log_message(self, fmt, *args):
             pass
     ThreadingHTTPServer(("", port), Handler).serve_forever()
 
