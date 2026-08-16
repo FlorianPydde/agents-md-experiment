@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.api import create_app
+from app.domain import Origin, Requester, RequestKind, ServiceRequest
 from app.engine import Engine
+from app.operations import Ledger
+from app.store import Store
 
 
 @pytest.fixture
@@ -60,24 +64,11 @@ def test_operations_and_policy_are_published(client: TestClient) -> None:
 
 
 def test_pending_approvals_can_be_resolved(client: TestClient, database: Path) -> None:
-    intake = {
-        "reference": "REQ-2001",
-        "kind": "goodwill_credit",
-        "account": "ACC-100",
-        "amount": "250.00",
-        "requester": {"name": "Nia Patel", "role": "agent", "origin": "internal"},
-    }
-    from decimal import Decimal
-
-    from app.domain import Origin, Requester, RequestKind, ServiceRequest
-    from app.operations import Ledger
-    from app.store import Store
-
     with Store(database) as store:
         engine = Engine(store, Ledger.from_accounts(store.accounts()))
         engine.intake(
             ServiceRequest(
-                reference=intake["reference"],
+                reference="REQ-2001",
                 kind=RequestKind.GOODWILL_CREDIT,
                 account="ACC-100",
                 amount=Decimal("250.00"),
