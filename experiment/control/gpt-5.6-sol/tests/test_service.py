@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import sqlite3
 from pathlib import Path
 
 from app.db import Database
@@ -118,7 +119,13 @@ class ServiceTest(unittest.TestCase):
         with self.assertRaisesRegex(AppError, "non-negative"):
             self.service.intake(request("R-5", amount="-0.01"))
 
+    def test_event_log_cannot_be_changed_or_deleted(self) -> None:
+        self.service.intake(request("R-6"))
+        with self.assertRaisesRegex(sqlite3.IntegrityError, "append-only"):
+            self.database.connection.execute("UPDATE event_log SET event = 'changed'")
+        with self.assertRaisesRegex(sqlite3.IntegrityError, "append-only"):
+            self.database.connection.execute("DELETE FROM event_log")
+
 
 if __name__ == "__main__":
     unittest.main()
-

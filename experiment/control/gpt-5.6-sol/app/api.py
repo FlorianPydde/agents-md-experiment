@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 from urllib.parse import unquote, urlparse
 
@@ -97,7 +97,7 @@ class ApiHandler(BaseHTTPRequestHandler):
 
 def serve(service: Service, host: str, port: int) -> None:
     handler = type("ConfiguredApiHandler", (ApiHandler,), {"service": service})
-    server = ThreadingHTTPServer((host, port), handler)
+    server = HTTPServer((host, port), handler)
     print(f"Serving on http://{host}:{port}")
     try:
         server.serve_forever()
@@ -105,4 +105,3 @@ def serve(service: Service, host: str, port: int) -> None:
         pass
     finally:
         server.server_close()
-

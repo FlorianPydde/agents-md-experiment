@@ -52,6 +52,12 @@ CREATE TABLE IF NOT EXISTS event_log (
     event TEXT NOT NULL,
     data TEXT NOT NULL
 );
+CREATE TRIGGER IF NOT EXISTS event_log_no_update
+    BEFORE UPDATE ON event_log
+    BEGIN SELECT RAISE(ABORT, 'event log is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS event_log_no_delete
+    BEFORE DELETE ON event_log
+    BEGIN SELECT RAISE(ABORT, 'event log is append-only'); END;
 """
 
 
@@ -129,4 +135,3 @@ class Database:
                 (reference,),
             )
         ]
-
