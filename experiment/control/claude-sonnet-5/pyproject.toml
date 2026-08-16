@@ -1,0 +1,19 @@
+[project]
+name = "governed-service-runner"
+version = "0.1.0"
+description = "Governed Service Request Runner prototype"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "app"
+module-root = ""

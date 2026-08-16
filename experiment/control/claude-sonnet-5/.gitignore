@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+governed.db
+report.csv
+report.json
+report.tsv
