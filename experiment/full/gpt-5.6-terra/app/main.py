@@ -212,6 +212,8 @@ class Service:
             raise RunnerError("approval role is invalid")
         if decision not in {"approve", "reject"}:
             raise RunnerError("decision is invalid")
+        if self.request_row(reference)["state"] != "awaiting_approval":
+            raise RunnerError(f"request {reference} has no pending approval")
         approval = self.db.execute(
             "SELECT * FROM approvals WHERE reference=? AND state='pending' ORDER BY id LIMIT 1", (reference,)
         ).fetchone()
@@ -375,6 +377,11 @@ def serve(database, port):
                 if size < 1 or size > 1_048_576:
                     raise RunnerError("request body must be between 1 and 1048576 bytes")
                 data = json.loads(self.rfile.read(size))
+                if not isinstance(data, dict):
+                    raise RunnerError("request body must be an object")
+                for field in ("role", "decision"):
+                    if field not in data:
+                        raise RunnerError(f"request body is missing required field {field}")
                 reference = unquote(parts[2])
                 service = Service(database)
                 try:
