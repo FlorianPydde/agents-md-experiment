@@ -62,9 +62,10 @@ def load_json(path: str) -> dict:
 
 class Service:
     def __init__(self, path: Path = DB_PATH):
-        self.db = sqlite3.connect(path)
+        self.db = sqlite3.connect(path, timeout=5)
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA foreign_keys = ON")
+        self.db.execute("PRAGMA journal_mode = WAL")
         self._schema()
 
     def close(self):
@@ -337,7 +338,13 @@ def application(environ, start_response):
             status = "200 OK" if result is not None else "404 Not Found"
             result = result if result is not None else {"error": f"request not found: {reference}"}
         elif method == "POST" and path.startswith("/approvals/"):
-            body = json.load(environ["wsgi.input"])
+            try:
+                content_length = int(environ.get("CONTENT_LENGTH") or "0")
+            except ValueError:
+                raise UserError("invalid Content-Length") from None
+            if content_length > 65_536:
+                raise UserError("approval body is too large")
+            body = json.loads(environ["wsgi.input"].read(content_length))
             if not isinstance(body, dict):
                 raise UserError("approval body must be an object")
             bits = path.strip("/").split("/")
