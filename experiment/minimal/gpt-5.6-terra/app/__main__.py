@@ -367,7 +367,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if "Content-Length" not in self.headers:
                 raise Error("Content-Length header is required")
-            length = int(self.headers["Content-Length"])
+            try:
+                length = int(self.headers["Content-Length"])
+            except ValueError:
+                raise Error("Content-Length must be an integer") from None
             if length < 0 or length > 1_048_576:
                 raise Error("request body must be at most 1048576 bytes")
             data = json.loads(self.rfile.read(length))
