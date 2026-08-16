@@ -411,8 +411,8 @@ class Engine:
             (reference,),
         )
         self.store.connection.commit()
-        self._execute(reference, approval["step_position"])
-        self._continue(reference)
+        if self._execute(reference, approval["step_position"]):
+            self._continue(reference)
 
     def _continue(self, reference: str) -> None:
         request = self.store.connection.execute(
