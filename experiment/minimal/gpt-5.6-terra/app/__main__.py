@@ -327,11 +327,11 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(encoded)
 
-    def service(self) -> Service:
+    def _open_service(self) -> Service:
         return Service(DB_PATH)
 
     def do_GET(self) -> None:
-        service = self.service()
+        service = self._open_service()
         try:
             path = urlparse(self.path).path
             parts = path.strip("/").split("/")
@@ -360,15 +360,18 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
-        if not path.startswith("/approvals/"):
+        parts = path.strip("/").split("/")
+        if len(parts) != 2 or parts[0] != "approvals" or not parts[1]:
             self.respond(404, {"error": "not found"})
             return
         try:
-            length = int(self.headers.get("Content-Length", "0"))
+            if "Content-Length" not in self.headers:
+                raise Error("Content-Length header is required")
+            length = int(self.headers["Content-Length"])
             if length < 0 or length > 1_048_576:
                 raise Error("request body must be at most 1048576 bytes")
             data = json.loads(self.rfile.read(length))
-            service = self.service()
+            service = self._open_service()
             try:
                 reference = path.rsplit("/", 1)[-1]
                 service.decide(reference, required(data, "role"), required(data, "decision"))
