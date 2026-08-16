@@ -1,0 +1,8 @@
+/.venv/
+/service.db
+/report.csv
+/report.json
+/report.tsv
+__pycache__/
+*.py[cod]
+

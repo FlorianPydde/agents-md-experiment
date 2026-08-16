@@ -192,7 +192,12 @@ class ApiHandler(BaseHTTPRequestHandler):
             return
         engine = None
         try:
-            length = int(self.headers.get("Content-Length", "0"))
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError as exc:
+                raise AppError("Content-Length must be an integer") from exc
+            if length < 0:
+                raise AppError("Content-Length must not be negative")
             if length > 1_000_000:
                 raise AppError("request body is too large")
             try:

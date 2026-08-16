@@ -325,6 +325,11 @@ class Engine:
     def _execute(self, request_id: int, step: sqlite3.Row) -> bool:
         arguments = json.loads(step["arguments"])
         operation = step["operation"]
+        self.log(
+            request_id,
+            "operation_started",
+            {"step": step["position"], "operation": operation},
+        )
         try:
             result = self._perform(request_id, operation, arguments)
         except AppError as exc:
@@ -546,4 +551,3 @@ class Engine:
                 (request["id"],),
             )
         ]
-
