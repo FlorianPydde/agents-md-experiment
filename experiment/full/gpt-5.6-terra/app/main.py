@@ -182,6 +182,10 @@ class Service:
         elif operation == "unfreeze_account":
             self.db.execute("UPDATE accounts SET frozen=0 WHERE id=?", (account["id"],))
         data = {"operation": operation}
+        if operation == "read_account":
+            data["balance"] = f"{current:.2f}"
+            data["tier"] = account["tier"]
+            data["frozen"] = bool(account["frozen"])
         if operation == "notify_customer":
             data["message"] = ("Internal service request completed" if request["requester_origin"] == "internal"
                                else "Your service request has been processed")
@@ -286,9 +290,9 @@ def run(scenario_path, world_path, database):
             else:
                 raise RunnerError("scenario action is invalid")
         for request in service.requests():
-            print(f"{request['reference']:<10}  {request['kind']:<20}  {request['state']}")
+            print(f"{request['reference']:<10}{request['kind']:<20}{request['state']}")
         for account in service.db.execute("SELECT * FROM accounts ORDER BY id"):
-            print(f"{account['id']:<10}  {amount(account['balance']):>10.2f}  "
+            print(f"{account['id']:<10}{amount(account['balance']):>10.2f}  "
                   f"{'frozen' if account['frozen'] else 'active'}")
     finally:
         service.close()
