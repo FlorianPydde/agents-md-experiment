@@ -1,0 +1,12 @@
+[project]
+name = "governed-service-request-runner"
+version = "0.1.0"
+description = "Receives service requests, plans them, and runs the steps under policy control."
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = []
+
+[tool.uv]
+package = false
