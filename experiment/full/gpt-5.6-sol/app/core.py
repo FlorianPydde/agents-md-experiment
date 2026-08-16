@@ -51,6 +51,10 @@ class AppError(Exception):
     pass
 
 
+class NotFoundError(AppError):
+    pass
+
+
 class OperationError(AppError):
     pass
 
@@ -212,7 +216,7 @@ class Store:
             (reference,),
         ).fetchone()
         if request is None:
-            raise AppError(f"request not found: {reference}")
+            raise NotFoundError(f"request not found: {reference}")
         result = dict(request)
         result["requester"] = json.loads(result["requester"])
         result["steps"] = [
@@ -239,7 +243,7 @@ class Store:
             "SELECT 1 FROM requests WHERE reference = ?", (reference,)
         ).fetchone()
         if exists is None:
-            raise AppError(f"request not found: {reference}")
+            raise NotFoundError(f"request not found: {reference}")
         return [
             {
                 "sequence": row["sequence"],

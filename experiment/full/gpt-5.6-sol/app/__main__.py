@@ -5,7 +5,6 @@ import csv
 import json
 import sqlite3
 import sys
-from functools import lru_cache
 from pathlib import Path
 
 from .api import serve
@@ -49,7 +48,6 @@ def command_show(references: list[str]) -> None:
     try:
         store.initialize()
 
-        @lru_cache(maxsize=None)
         def lookup(reference: str) -> str:
             return json.dumps(
                 store.request_details(reference), indent=2, sort_keys=True

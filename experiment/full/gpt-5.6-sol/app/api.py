@@ -12,6 +12,7 @@ from .core import (
     POLICY_RULES,
     AppError,
     Engine,
+    NotFoundError,
     Store,
 )
 
@@ -52,6 +53,8 @@ class ApiHandler(BaseHTTPRequestHandler):
                     self._send({"error": "not found"}, HTTPStatus.NOT_FOUND)
             else:
                 self._send({"error": "not found"}, HTTPStatus.NOT_FOUND)
+        except NotFoundError as exc:
+            self._send({"error": str(exc)}, HTTPStatus.NOT_FOUND)
         except AppError as exc:
             self._send({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
 
