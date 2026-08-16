@@ -180,7 +180,8 @@ class ApiHandler(BaseHTTPRequestHandler):
             else:
                 self.send_json(404, {"error": "not found"})
         except AppError as exc:
-            self.send_json(404, {"error": str(exc)})
+            status = 404 if str(exc).startswith("request not found:") else 500
+            self.send_json(status, {"error": str(exc)})
         finally:
             if engine is not None:
                 engine.close()

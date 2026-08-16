@@ -192,7 +192,7 @@ class ApiTests(unittest.TestCase):
         database = self.database
 
         class Handler(ApiHandler):
-            engine_factory = staticmethod(lambda: self.open_database(database))
+            engine_factory = staticmethod(lambda: ApiTests.open_database(database))
 
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -227,4 +227,3 @@ class ApiTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
