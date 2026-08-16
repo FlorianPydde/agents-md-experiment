@@ -6,12 +6,12 @@ import json
 import sqlite3
 import sys
 from decimal import Decimal, InvalidOperation
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
-ROOT = Path.cwd()
-DB_NAME = "service.db"
+DB_PATH = Path(__file__).resolve().parents[1] / "service.db"
 KINDS = {
     "goodwill_credit": ["read_account", "apply_credit", "notify_customer"],
     "account_recovery": ["read_account", "unfreeze_account", "apply_credit", "notify_customer"],
@@ -229,7 +229,7 @@ class Service:
                 self.log(reference, "operation_failed", operation=step["operation"], error=str(exc))
                 self.log(reference, "request_failed")
             else:
-                self.db.execute("UPDATE requests SET state='received',position=position+1 WHERE reference=?", (reference,))
+                self.db.execute("UPDATE requests SET position=position+1 WHERE reference=?", (reference,))
                 self.advance(reference)
         self.db.commit()
 
@@ -254,7 +254,7 @@ class Service:
 
 
 def run(args: argparse.Namespace) -> int:
-    db = Path(DB_NAME)
+    db = DB_PATH
     if db.exists():
         db.unlink()
     service = Service(db)
@@ -282,7 +282,7 @@ def run(args: argparse.Namespace) -> int:
 
 
 def show(args: argparse.Namespace) -> int:
-    service = Service(Path(DB_NAME))
+    service = Service(DB_PATH)
     try:
         cached = {reference: service.request_data(reference) for reference in dict.fromkeys(args.references)}
         for reference in args.references:
@@ -301,7 +301,7 @@ def show(args: argparse.Namespace) -> int:
 
 def export(args: argparse.Namespace) -> int:
     formats = {"csv": (",", "report.csv"), "tsv": ("\t", "report.tsv")}
-    service = Service(Path(DB_NAME))
+    service = Service(DB_PATH)
     try:
         rows = [dict(row) for row in service.db.execute(
             "SELECT reference,kind,state,account,amount FROM requests ORDER BY rowid")]
@@ -328,25 +328,26 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(encoded)
 
     def service(self) -> Service:
-        return Service(Path(DB_NAME))
+        return Service(DB_PATH)
 
     def do_GET(self) -> None:
         service = self.service()
         try:
-            parts = self.path.strip("/").split("/")
-            if self.path == "/health":
+            path = urlparse(self.path).path
+            parts = path.strip("/").split("/")
+            if path == "/health":
                 body = {"status": "ok"}
-            elif self.path == "/requests":
+            elif path == "/requests":
                 body = [service.request_data(row["reference"]) for row in service.db.execute("SELECT reference FROM requests ORDER BY rowid")]
-            elif self.path == "/approvals/pending":
+            elif path == "/approvals/pending":
                 body = [dict(row) for row in service.db.execute("SELECT reference,position,role FROM approvals WHERE state='pending'")]
             elif len(parts) == 3 and parts[0] == "requests" and parts[2] == "log":
                 body = service.events(parts[1])
             elif len(parts) == 2 and parts[0] == "requests":
                 body = service.request_data(parts[1])
-            elif self.path == "/operations":
+            elif path == "/operations":
                 body = [{"name": key, "materiality": value} for key, value in OPERATIONS.items()]
-            elif self.path == "/policy":
+            elif path == "/policy":
                 body = ["read:auto", "apply_credit<=100:auto", "apply_credit>100:finance", "apply_debit:finance", "freeze/unfreeze:risk", "otherwise:auto"]
             else:
                 self.respond(404, {"error": "not found"})
@@ -358,16 +359,20 @@ class Handler(BaseHTTPRequestHandler):
             service.close()
 
     def do_POST(self) -> None:
-        if not self.path.startswith("/approvals/"):
+        path = urlparse(self.path).path
+        if not path.startswith("/approvals/"):
             self.respond(404, {"error": "not found"})
             return
         try:
             length = int(self.headers.get("Content-Length", "0"))
+            if length < 0 or length > 1_048_576:
+                raise Error("request body must be at most 1048576 bytes")
             data = json.loads(self.rfile.read(length))
             service = self.service()
             try:
-                service.decide(self.path.rsplit("/", 1)[-1], required(data, "role"), required(data, "decision"))
-                self.respond(200, service.request_data(self.path.rsplit("/", 1)[-1]))
+                reference = path.rsplit("/", 1)[-1]
+                service.decide(reference, required(data, "role"), required(data, "decision"))
+                self.respond(200, service.request_data(reference))
             finally:
                 service.close()
         except (Error, json.JSONDecodeError) as exc:
@@ -379,7 +384,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def serve(_: argparse.Namespace) -> int:
     print("Serving on http://127.0.0.1:8000")
-    ThreadingHTTPServer(("127.0.0.1", 8000), Handler).serve_forever()
+    HTTPServer(("127.0.0.1", 8000), Handler).serve_forever()
     return 0
 
 
