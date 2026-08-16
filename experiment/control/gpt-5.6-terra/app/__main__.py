@@ -315,7 +315,7 @@ def export(args):
 
 def application(environ, start_response):
     service = _server_service
-    owned_service = service is None
+    created_local_service = service is None
     if service is None:
         service = Service()
     try:
@@ -350,7 +350,13 @@ def application(environ, start_response):
                 raise UserError("approval body is required")
             if content_length > 65_536:
                 raise UserError("approval body is too large")
-            body = json.loads(environ["wsgi.input"].read(content_length))
+            encoded_body = environ["wsgi.input"].read(content_length)
+            if len(encoded_body) != content_length:
+                raise UserError("approval body is incomplete")
+            try:
+                body = json.loads(encoded_body)
+            except json.JSONDecodeError:
+                raise UserError("approval body is not valid JSON") from None
             if not isinstance(body, dict):
                 raise UserError("approval body must be an object")
             bits = path.strip("/").split("/")
@@ -365,7 +371,7 @@ def application(environ, start_response):
     except (UserError, json.JSONDecodeError) as exc:
         result, status = {"error": str(exc)}, "400 Bad Request"
     finally:
-        if owned_service:
+        if created_local_service:
             service.close()
     start_response(status, [("Content-Type", "application/json")])
     return [json.dumps(result).encode()]

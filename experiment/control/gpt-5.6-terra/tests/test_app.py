@@ -50,6 +50,7 @@ class ServiceTests(unittest.TestCase):
         self.service.intake(request("recovery", "account_recovery"))
         self.service.decide("recovery", "risk", "reject")
         self.assertEqual(self.service.request("recovery")["state"], "rejected")
+        self.assertEqual(self.service.request("recovery")["steps"][0]["state"], "completed")
         self.assertEqual(self.service.request("recovery")["steps"][1]["state"], "pending")
 
     def test_failed_debit_is_final(self):
