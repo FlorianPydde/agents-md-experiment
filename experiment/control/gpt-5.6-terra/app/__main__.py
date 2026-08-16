@@ -370,8 +370,8 @@ def application(environ, start_response):
             result, status = {"status": "resolved"}, "200 OK"
         else:
             result, status = {"error": "not found"}, "404 Not Found"
-    except (UserError, json.JSONDecodeError) as exc:
-        result, status = {"error": str(exc)}, "400 Bad Request"
+    except (UserError, json.JSONDecodeError):
+        result, status = {"error": "invalid request"}, "400 Bad Request"
     finally:
         if created_local_service:
             service.close()

@@ -69,7 +69,7 @@ class ServiceTests(unittest.TestCase):
         ))
         app._server_service = None
         self.assertEqual(response["status"], "400 Bad Request")
-        self.assertIn(b"approval body is required", body)
+        self.assertIn(b"invalid request", body)
 
 
 if __name__ == "__main__":
